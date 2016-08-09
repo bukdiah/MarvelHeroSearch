@@ -36,6 +36,10 @@ dependencies {
 
     compile 'com.squareup.retrofit2:adapter-rxjava:2.0.2'
 
+    //Picasso for loading resources
+    compile 'com.squareup.picasso:picasso:2.5.2'
+
+
 
 
 
