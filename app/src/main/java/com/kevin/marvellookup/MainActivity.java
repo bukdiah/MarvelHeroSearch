@@ -1,24 +1,35 @@
 package com.kevin.marvellookup;
 
 import android.os.Bundle;
-import android.support.design.widget.TabLayout;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.kevin.marvellookup.pojo.CharactersData;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava.HttpException;
+import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
+import rx.Observable;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.schedulers.Schedulers;
+
+/**
+ * Created by kevins on 8/9/16.
+ */
 public class MainActivity extends AppCompatActivity {
-    static String baseURL = "http://gateway.marvel.com:80/v1/public/characters?name=";
+
+    //static String baseURL = "http://gateway.marvel.com:80/v1/public/characters?name=";
+    static String baseURL = "http://gateway.marvel.com:80/v1/public/";
     static String publicAPI = "971211f705ea2abfa6a3e139bdeafeed";
     static String privateAPI = "ce3c2ac5727f98c9093eba74a4224a2d3cf56abe";
     String url;
@@ -56,61 +67,55 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private Toolbar toolbar;
-    private TabLayout tabLayout;
-    private ViewPager viewPager;
-    
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.main_activity_layout);
 
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        Retrofit retrofit = new Retrofit.Builder()
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .baseUrl(baseURL)
+                .build();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        CharacterService characterService = retrofit.create(CharacterService.class);
 
-        viewPager = (ViewPager) findViewById(R.id.viewpager);
-        setupViewPager(viewPager);
+        Observable<CharactersData> hulk = characterService.getCharactersData("hulk",publicAPI);
 
-        tabLayout = (TabLayout) findViewById(R.id.tabs);
-        tabLayout.setupWithViewPager(viewPager);
-    }
+        hulk.subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<CharactersData>() {
+                    @Override
+                    public void onCompleted() {
+                        Log.d("COMPLETE","COMPLETE!");
+                    }
 
-    private void setupViewPager(ViewPager viewPager) {
+                    @Override
+                    public void onError(Throwable e) {
+                        if(e instanceof HttpException)
+                        {
+                            HttpException response = (HttpException) e;
+                            int code = response.code();
 
-        ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
-        adapter.addFragment(new DescriptionFragment(), "Description");
-        adapter.addFragment(new SeriesFragment(), "Series");
-        viewPager.setAdapter(adapter);
-    }
+                            Log.e("Response code",Integer.toString(code));
+                        }
+                    }
 
-    class ViewPagerAdapter extends FragmentPagerAdapter {
-        private final List<Fragment> mFragmentList = new ArrayList<>();
-        private final List<String> mFragmentTitleList = new ArrayList<>();
+                    @Override
+                    public void onNext(CharactersData charactersData) {
+                        Log.d("CHARACTER", charactersData.getData().getResults().get(0).getDescription());
 
-        public ViewPagerAdapter(FragmentManager manager) {
-            super(manager);
-        }
+                    }
+                });
+        /*
 
-        @Override
-        public Fragment getItem(int position) {
-            return mFragmentList.get(position);
-        }
-
-        @Override
-        public int getCount() {
-            return mFragmentList.size();
-        }
-
-        public void addFragment(Fragment fragment, String title) {
-            mFragmentList.add(fragment);
-            mFragmentTitleList.add(title);
-        }
-
-        @Override
-        public CharSequence getPageTitle(int position) {
-            return mFragmentTitleList.get(position);
-        }
+        hulk.subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<CharactersData>() {
+                    @Override
+                    public void call(CharactersData charactersData) {
+                        Log.e("CHARACTER", charactersData.getData().getResults().get(0).getDescription());
+                    }
+                });*/
     }
 }
