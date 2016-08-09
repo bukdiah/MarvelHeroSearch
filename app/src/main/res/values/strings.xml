@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Marvel Lookup</string>
+    <string name="find_hero">Find hero...</string>
+    <string name="btn_search_text">Search</string>
+</resources>
