@@ -6,6 +6,15 @@ package com.kevin.marvellookup;
 public class HeroInfo {
     int iconId;
     String name;
+    String imageURL;
+
+    public String getImageURL() {
+        return imageURL;
+    }
+
+    public void setImageURL(String imageURL) {
+        this.imageURL = imageURL;
+    }
 
     public int getIconId() {
         return iconId;

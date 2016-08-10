@@ -39,7 +39,8 @@ dependencies {
     //Picasso for loading resources
     compile 'com.squareup.picasso:picasso:2.5.2'
 
-
+    //jsoup
+    compile 'org.jsoup:jsoup:1.9.2'
 
 
 

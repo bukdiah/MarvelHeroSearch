@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import com.kevin.marvellookup.HeroInfo;
 import com.kevin.marvellookup.R;
+import com.squareup.picasso.Picasso;
 
 import java.util.Collections;
 import java.util.List;
@@ -21,15 +22,18 @@ import java.util.List;
 public class HeroAdapter extends RecyclerView.Adapter<HeroAdapter.MyViewHolder> {
     List<HeroInfo> data = Collections.emptyList();
     private LayoutInflater inflater;
+    private Context context;
 
     public HeroAdapter(Context context, List<HeroInfo> data)
     {
+        this.context = context;
         inflater = LayoutInflater.from(context);
         this.data = data;
     }
+
     @Override
     public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = inflater.inflate(R.layout.row_layout,parent,false);
+        View view = inflater.inflate(R.layout.row_layout_copy,parent,false);
 
         MyViewHolder holder = new MyViewHolder(view);
         return holder;
@@ -40,7 +44,13 @@ public class HeroAdapter extends RecyclerView.Adapter<HeroAdapter.MyViewHolder> 
         HeroInfo current = data.get(position);
 
         holder.name.setText(current.getName());
-        holder.icon.setImageResource(current.getIconId());
+        //holder.icon.setImageResource(current.getIconId());
+
+        //Load image from URL into ImageView
+        Picasso
+                .with(context)
+                .load(current.getImageURL())
+                .into(holder.icon);
     }
 
     @Override
@@ -48,15 +58,35 @@ public class HeroAdapter extends RecyclerView.Adapter<HeroAdapter.MyViewHolder> 
         return data.size();
     }
 
-    class MyViewHolder extends ViewHolder{
-        ImageView icon;
-        TextView name;
+    private static ClickListener clickListener;
 
-        public MyViewHolder(View itemView) {
+    public interface ClickListener {
+        void onItemClick(View itemView, int position);
+    }
+
+    public void setClickListener(ClickListener clickListener)
+    {
+        this.clickListener = clickListener;
+    }
+
+    public static class MyViewHolder extends ViewHolder{
+        public ImageView icon;
+        public TextView name;
+
+        public MyViewHolder(final View itemView) {
             super(itemView);
 
             name = (TextView) itemView.findViewById(R.id.tvHero);
             icon = (ImageView) itemView.findViewById(R.id.ivHero);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if(clickListener != null)
+                        clickListener.onItemClick(itemView,getLayoutPosition());
+                }
+            });
+
 
         }
     }
