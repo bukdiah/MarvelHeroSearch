@@ -8,53 +8,16 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
+import android.util.Log;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TabLayoutActivity extends AppCompatActivity {
-    static String baseURL = "http://gateway.marvel.com:80/v1/public/characters?name=";
-    static String publicAPI = "971211f705ea2abfa6a3e139bdeafeed";
-    static String privateAPI = "ce3c2ac5727f98c9093eba74a4224a2d3cf56abe";
-    String url;
 
-    String hash;
-    int min = 1;
-    int max = 10000;
-
-    int TS;
-
-    static String id = "";
-    static String name = "";
-    static String description = "";
-
-    Button btnSearch;
-    EditText editName;
-    TextView textID, textName, textDesc;
-
-    public void md5Hash(int TS, String privateKey, String publicKey) {
-        String combo = TS + privateKey + publicKey;
-        try {
-            MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-            messageDigest.update(combo.getBytes());
-            byte[] digest = messageDigest.digest();
-            StringBuffer sb = new StringBuffer();
-
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
-            hash = sb.toString();
-
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-
-    }
+    private String bio = "";
+    private String powers = "";
+    private String abilities = "";
 
     private Toolbar toolbar;
     private TabLayout tabLayout;
@@ -64,6 +27,24 @@ public class TabLayoutActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_activity);
+
+        //Retrieve Bundle sent from man activity
+        Bundle b = getIntent().getExtras();
+
+        if(b != null)
+        {
+            Log.d("TabLayout Bundle", "bio: "+b.getString("bio"));
+            Log.d("TabLayout Bundle", "powers: "+b.getString("powers"));
+            Log.d("TabLayout Bundle", "abilities: "+b.getString("abilities"));
+
+            bio = b.getString(BioFragment.BIO);
+            powers = b.getString(PowersAbilitiesFragment.POWERS);
+            abilities = b.getString(PowersAbilitiesFragment.ABILITIES);
+        }
+        else
+        {
+            Log.d("TabLayout Bundle", "NULL ");
+        }
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -80,8 +61,10 @@ public class TabLayoutActivity extends AppCompatActivity {
     private void setupViewPager(ViewPager viewPager) {
 
         ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
-        adapter.addFragment(new DescriptionFragment(), "Description");
-        adapter.addFragment(new SeriesFragment(), "Series");
+        //adapter.addFragment(new BioFragment(), "Biography");
+        adapter.addFragment(BioFragment.newInstance(bio),"Biography");
+        //adapter.addFragment(new PowersAbilitiesFragment(), "Attributes/Powers");
+        adapter.addFragment(PowersAbilitiesFragment.newtInstance(powers,abilities), "Powers/Abilities");
         viewPager.setAdapter(adapter);
     }
 
@@ -95,6 +78,7 @@ public class TabLayoutActivity extends AppCompatActivity {
 
         @Override
         public Fragment getItem(int position) {
+
             return mFragmentList.get(position);
         }
 
