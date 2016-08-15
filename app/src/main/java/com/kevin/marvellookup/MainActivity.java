@@ -3,12 +3,14 @@ package com.kevin.marvellookup;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -40,38 +42,28 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action0;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
+import rx.subscriptions.CompositeSubscription;
 
 /**
  * Created by kevins on 8/9/16.
  */
 public class MainActivity extends AppCompatActivity {
 
-    static String baseURL = "http://gateway.marvel.com:80/v1/public/";
-    static String publicAPI = "971211f705ea2abfa6a3e139bdeafeed";
-    static String privateAPI = "ce3c2ac5727f98c9093eba74a4224a2d3cf56abe";
-    HashMap<String,String> detailMap = new HashMap<>();
+    private static String baseURL = "http://gateway.marvel.com:80/v1/public/";
+    private static String publicAPI = "971211f705ea2abfa6a3e139bdeafeed";
+    private static String privateAPI = "ce3c2ac5727f98c9093eba74a4224a2d3cf56abe";
 
-    //Intent i = new Intent(context,TabLayoutActivity.class);
-    //Bundle bundle = new Bundle();
+    private Context context;
+    private HeroAdapter adapter;
+    private RecyclerView recyclerView;
 
-    Context context;
-    HeroAdapter adapter;
-    RecyclerView recyclerView;
+    private String hash;
+    private int min = 1;
+    private int max = 10000;
 
-    String hash;
-    int min = 1;
-    int max = 10000;
-
-    int TS;
-
-    ProgressDialog progress;
-
-    static String id = "";
-    static String name = "";
-    static String description = "";
+    private int TS;
 
     Button btnSearch;
     EditText editName;
@@ -79,6 +71,20 @@ public class MainActivity extends AppCompatActivity {
 
     Intent i;
     Bundle bundle;
+
+    private CharacterService characterService, characterDetail;
+    private Observable<CharactersData> searchResults, detailSearch;
+    private CompositeSubscription mCompositeSubscription;
+
+    private ProgressDialog mProgressDialog;
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        mCompositeSubscription.unsubscribe();
+
+    }
 
     public void md5Hash(int TS, String privateKey, String publicKey) {
         String combo = TS + privateKey + publicKey;
@@ -99,26 +105,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public static List<HeroInfo> getData()
-    {
-        List<HeroInfo> data = new ArrayList<>();
-        int [] icons = {R.drawable.reedrichards_medium,R.drawable.reedrichards_medium,R.drawable.reedrichards_medium,R.drawable.reedrichards_medium};
-        String [] titles = {"Farty","Sharty","Gero","Tabla"};
-
-        for(int i=0; i<titles.length && i<icons.length;i++)
-        {
-            HeroInfo current = new HeroInfo();
-            current.iconId=icons[i];
-            current.name = titles[i];
-            data.add(current);
-
-        }
-        return data;
-    }
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
+
+        mCompositeSubscription = new CompositeSubscription();
 
         i = new Intent(this,TabLayoutActivity.class);
         bundle = new Bundle();
@@ -149,8 +141,15 @@ public class MainActivity extends AppCompatActivity {
         btnSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                mProgressDialog = new ProgressDialog(context);
+                mProgressDialog.setTitle("Please wait");
+                mProgressDialog.setMessage("Searching for hero...");
+                mProgressDialog.setCancelable(false);
+                mProgressDialog.setIndeterminate(true);
+                //mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                mProgressDialog.show();
+
                 searchHero();
-                //adapter.setClickListener(this);
             }
         });
 
@@ -160,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
 
         String nameStartsWith = editName.getText().toString();
 
-        CharacterService characterService = retrofit.create(CharacterService.class);
+        characterService = retrofit.create(CharacterService.class);
 
         if(nameStartsWith!=null) {
             Random r = new Random();
@@ -172,77 +171,83 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d("HASH", hash);
 
-            Observable<CharactersData> searchResults = characterService.getSearchResults(nameStartsWith,TS,publicAPI,hash);
+            searchResults = characterService.getSearchResults(nameStartsWith,TS,publicAPI,hash);
 
-            searchResults.subscribeOn(Schedulers.newThread())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Subscriber<CharactersData>() {
-                        @Override
-                        public void onCompleted() {
-                            Log.d("COMPLETE","COMPLETE!");
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-                            if(e instanceof HttpException)
-                            {
-                                HttpException response = (HttpException) e;
-                                int code = response.code();
-
-                                Log.e("Response code",Integer.toString(code));
-                            }
-                        }
-
-                        @Override
-                        public void onNext(CharactersData charactersData) {
-                            //List of Result objects
-                            List<Result> data = charactersData.getData().getResults();
-                            List<HeroInfo> heroes = new ArrayList<>();
-
-                            //Create HeroInfo objects outta all of these and put inside a List<HeroInfo>
-                            for (Result temp : data)
-                            {
-                                String name = temp.getName();
-                                String imageURL = temp.getThumbnail().getPath()+"/standard_large.jpg";
-                                int iconId = temp.getId();
-
-                                HeroInfo current = new HeroInfo();
-                                current.name = name;
-                                current.imageURL = imageURL;
-                                current.iconId = iconId;
-                                heroes.add(current);
-                            }
-                            adapter = new HeroAdapter(context,heroes);
-                            adapter.setClickListener(new HeroAdapter.ClickListener() {
+            mCompositeSubscription.add(
+                    searchResults.subscribeOn(Schedulers.newThread())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Subscriber<CharactersData>() {
                                 @Override
-                                public void onItemClick(View itemView, int position) {
-                                    TextView tvName = (TextView) itemView.findViewById(R.id.tvHero);
-                                    String name = tvName.getText().toString();
-                                    Log.d("Mainactivity", "onItemClick: YES");
-                                    Toast.makeText(MainActivity.this, name, Toast.LENGTH_SHORT).show();
+                                public void onCompleted() {
+                                    mProgressDialog.dismiss();
+                                    Log.d("COMPLETE","COMPLETE!");
+                                }
 
-                                    //Pass String name into a method that calls RxAndroid for another query
-                                    adapterClick(name);
+                                @Override
+                                public void onError(Throwable e) {
+                                    if(e instanceof HttpException)
+                                    {
+                                        HttpException response = (HttpException) e;
+                                        int code = response.code();
 
-                                    //Intent i = new Intent(context,TabLayoutActivity.class);
-                                    //Bundle bundle = new Bundle();
+                                        Log.e("Response code",Integer.toString(code));
+                                    }
+                                }
 
-                                    //String bio = detailMap.get("bio");
-                                    //String powers = detailMap.get("powers");
-                                    //String abilities = detailMap.get("abilities");
+                                @Override
+                                public void onNext(CharactersData charactersData) {
+                                    //List of Result objects
+                                    List<Result> data = charactersData.getData().getResults();
+                                    List<HeroInfo> heroes = new ArrayList<>();
 
-                                    //Log.d("MAIN", "onItemClick: bio "+bio);
-                                    //Log.d("MAIN", "onItemClick: powers "+powers);
-                                    //Log.d("MAIN", "onItemClick: abilties "+abilities);
-                                    //i.putExtras(bundle);
-                                    //startActivity(i);
+                                    //Create HeroInfo objects outta all of these and put inside a List<HeroInfo>
+                                    for (Result temp : data)
+                                    {
+                                        String name = temp.getName();
+                                        String imageURL = temp.getThumbnail().getPath()+"/standard_large.jpg";
+                                        int iconId = temp.getId();
+
+                                        HeroInfo current = new HeroInfo();
+                                        current.name = name;
+                                        current.imageURL = imageURL;
+                                        current.iconId = iconId;
+                                        heroes.add(current);
+                                    }
+                                    adapter = new HeroAdapter(context,heroes);
+
+                                    adapter.setClickListener(new HeroAdapter.ClickListener() {
+                                        @Override
+                                        public void onItemClick(View itemView, int position) {
+                                            TextView tvName = (TextView) itemView.findViewById(R.id.tvHero);
+                                            String name = tvName.getText().toString();
+                                            Log.d("Mainactivity", "onItemClick: YES");
+                                            Toast.makeText(MainActivity.this, name, Toast.LENGTH_SHORT).show();
+
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                                                // If we're running on Honeycomb or newer, then we can use the Theme's
+                                                // selectableItemBackground to ensure that the View has a pressed state
+                                                TypedValue outValue = new TypedValue();
+                                                context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
+                                                itemView.setBackgroundResource(outValue.resourceId);
+                                            }
+
+                                            mProgressDialog = new ProgressDialog(context);
+                                            mProgressDialog.setTitle("Please wait");
+                                            mProgressDialog.setMessage("Getting character details...");
+                                            mProgressDialog.setCancelable(false);
+                                            mProgressDialog.setIndeterminate(true);
+                                            mProgressDialog.show();
+                                            //Pass String name into a method that calls RxAndroid for another query
+                                            adapterClick(name);
+
+                                        }
+                                    });
+                                    recyclerView.setAdapter(adapter);
 
                                 }
-                            });
-                            recyclerView.setAdapter(adapter);
+                            })
+            );
 
-                        }
-                    });
         }
     }
 
@@ -250,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
     {
         Log.d("adapterclick","adapterClick called");
 
-        CharacterService characterDetail = retrofit.create(CharacterService.class);
+        characterDetail = retrofit.create(CharacterService.class);
 
         if(name != null)
         {
@@ -266,47 +271,43 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d("HASH", hash);
 
-            Observable<CharactersData> detailSearch = characterDetail.getCharactersData(name,TS,publicAPI,hash);
+            detailSearch = characterDetail.getCharactersData(name,TS,publicAPI,hash);
 
-            detailSearch.subscribeOn(Schedulers.newThread())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(new Subscriber<CharactersData>() {
-                            @Override
-                            public void onCompleted() {
-                                Log.d("AdapterClick", "onCompleted: DONE");
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                if(e instanceof HttpException)
-                                {
-                                    HttpException response = (HttpException) e;
-                                    int code = response.code();
-
-                                    Log.e("Response code",Integer.toString(code));
+            mCompositeSubscription.add(
+                    detailSearch.subscribeOn(Schedulers.newThread())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Subscriber<CharactersData>() {
+                                @Override
+                                public void onCompleted() {
+                                    mProgressDialog.dismiss();
+                                    Log.d("AdapterClick", "onCompleted: DONE");
                                 }
-                            }
 
-                            @Override
-                            public void onNext(CharactersData charactersData) {
-                                Log.d("adapterclick", " detailSearch onNext: CALLED");
-                                //Intent i = new Intent(context,TabLayoutActivity.class);
-
-                                List<Result> data = charactersData.getData().getResults();
-                                List<Url> URLs;
-
-                                for(Result temp : data)
-                                {
-                                    String desc = temp.getDescription();
-                                    URLs = temp.getUrls();
-
-                                    if(desc != null && !desc.isEmpty() && !desc.trim().isEmpty())
+                                @Override
+                                public void onError(Throwable e) {
+                                    if(e instanceof HttpException)
                                     {
-                                        Log.d("adapterclick", "desc = "+desc);
-                                        //bundle.putString("bio",desc);
+                                        HttpException response = (HttpException) e;
+                                        int code = response.code();
+
+                                        Log.e("Response code",Integer.toString(code));
                                     }
-                                    else
+                                }
+
+                                @Override
+                                public void onNext(CharactersData charactersData) {
+
+                                    Log.d("adapterclick", " detailSearch onNext: CALLED");
+                                    //Intent i = new Intent(context,TabLayoutActivity.class);
+
+                                    List<Result> data = charactersData.getData().getResults();
+                                    List<Url> URLs;
+
+                                    for(Result temp : data)
                                     {
+                                        String desc = temp.getDescription();
+                                        URLs = temp.getUrls();
+
                                         Log.d("adapterclick", "ELSE clause of deatileSearch");
                                         for(Url u: URLs)
                                         {
@@ -319,13 +320,6 @@ public class MainActivity extends AppCompatActivity {
                                                     public void call(Subscriber<? super HashMap<String, String>> subscriber) {
                                                         try{
                                                             HashMap<String,String> dataMap = searchDetail(wiki);
-
-                                                            for (String key: dataMap.keySet())
-                                                            {
-                                                                System.out.println("------------------------------------------------");
-                                                                System.out.println("Iterating or looping map using java5 foreach loop");
-                                                                System.out.println("key: " + key + " value: " + dataMap.get(key));
-                                                            }
                                                             subscriber.onNext(dataMap); //Emit the hashmap
                                                             subscriber.onCompleted();
                                                         }catch(Exception e)
@@ -350,38 +344,16 @@ public class MainActivity extends AppCompatActivity {
 
                                                                 i.putExtras(bundle);
                                                                 startActivity(i);
-                                                                //detailMap.putAll(map);
-
-                                                                //String bio = map.get("bio");
-                                                                //detailMap.put("bio",bio);
-
-                                                                //Log.d("fetchFromWiki", "bio: "+bio);
-
-                                                                /*
-                                                                String bio,powers,abilities;
-
-                                                                for (String key: map.keySet())
-                                                                {
-                                                                    System.out.println("------------------------------------------------");
-                                                                    System.out.println("Inside fetchfromWiki subscribe");
-                                                                    System.out.println("key: " + key + " value: " + map.get(key));
-                                                                }
-
-                                                                bio = map.get("bio");
-                                                                powers = map.get("powers");
-                                                                abilities = map.get("abilities");
-                                                                */
-                                                                //bundle.putString("bio",bio);
-                                                                //bundle.putString("powers",powers);
-                                                                //bundle.putString("abilities",abilities);
                                                             }
                                                         });
                                             }
                                         }
+
                                     }
                                 }
-                            }
-                        });
+                            })
+            );
+
 
         }
     }
@@ -420,10 +392,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        Log.d("searchDetail", "bio: "+bio);
-        Log.d("searchDetail", "powers: "+powers);
-        Log.d("searchDetail", "abilities: "+abilities);
 
         map.put("bio",bio);
         map.put("powers",powers);

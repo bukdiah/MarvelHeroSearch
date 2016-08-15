@@ -42,6 +42,10 @@ dependencies {
     //jsoup
     compile 'org.jsoup:jsoup:1.9.2'
 
+    //RecyclerView animator library
+    compile 'jp.wasabeef:recyclerview-animators:2.2.3'
+
+
 
 
 

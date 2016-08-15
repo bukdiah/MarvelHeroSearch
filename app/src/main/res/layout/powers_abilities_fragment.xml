@@ -1,46 +1,41 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
-    <ScrollView
-        android:id="@+id/bioScroll"
+<ScrollView android:id="@+id/abilitiesScroll"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scrollbars="vertical"
-        android:fillViewport="true"
-        >
-        <RelativeLayout
+        android:layout_height="wrap_content"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+        <LinearLayout
+            android:baselineAligned="false"
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
-
             <TextView
                 android:padding="8dp"
                 android:id="@+id/tvPowersLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Powers"
-                android:textSize="20dp"
+                android:textSize="20sp"
                 android:textStyle="bold"
+                android:layout_gravity="fill"
                 />
             <TextView
                 android:padding="8dp"
                 android:id="@+id/tvPowers"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12dp"
-                android:layout_below="@id/tvPowersLabel"
+                android:textSize="12sp"
+                android:layout_gravity="fill"
                 />
 
             <TextView
                 android:padding="8dp"
-                android:textSize="20dp"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:text="Abilities"
                 android:id="@+id/tvAbilitiesLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_below="@id/tvPowers"
+                android:layout_gravity="fill"
                 />
 
             <TextView
@@ -48,12 +43,8 @@
                 android:id="@+id/tvAbilities"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12dp"
-                android:layout_below="@id/tvAbilitiesLabel"
+                android:textSize="12sp"
+                android:layout_gravity="fill"
                 />
-
-
-        </RelativeLayout>
-
-    </ScrollView>
-</LinearLayout>
+        </LinearLayout>
+</ScrollView>

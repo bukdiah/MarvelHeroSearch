@@ -1,5 +1,6 @@
 package com.kevin.marvellookup;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
@@ -15,19 +16,21 @@ import java.util.List;
 
 public class TabLayoutActivity extends AppCompatActivity {
 
-    private String bio = "";
-    private String powers = "";
-    private String abilities = "";
+    private String bio;
+    private String powers;
+    private String abilities;
 
     private Toolbar toolbar;
     private TabLayout tabLayout;
     private ViewPager viewPager;
+
+    private Context context;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_activity);
-
+        context = this;
         //Retrieve Bundle sent from man activity
         Bundle b = getIntent().getExtras();
 
@@ -40,6 +43,8 @@ public class TabLayoutActivity extends AppCompatActivity {
             bio = b.getString(BioFragment.BIO);
             powers = b.getString(PowersAbilitiesFragment.POWERS);
             abilities = b.getString(PowersAbilitiesFragment.ABILITIES);
+
+            //System.out.println("BIO: "+bio);
         }
         else
         {
@@ -65,6 +70,7 @@ public class TabLayoutActivity extends AppCompatActivity {
         adapter.addFragment(BioFragment.newInstance(bio),"Biography");
         //adapter.addFragment(new PowersAbilitiesFragment(), "Attributes/Powers");
         adapter.addFragment(PowersAbilitiesFragment.newtInstance(powers,abilities), "Powers/Abilities");
+        adapter.addFragment(new SeriesFragment(), "Series");
         viewPager.setAdapter(adapter);
     }
 
