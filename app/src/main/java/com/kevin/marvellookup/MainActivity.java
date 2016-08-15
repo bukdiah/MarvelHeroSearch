@@ -12,6 +12,7 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import jp.wasabeef.recyclerview.adapters.AlphaInAnimationAdapter;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.HttpException;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
@@ -242,7 +244,11 @@ public class MainActivity extends AppCompatActivity {
 
                                         }
                                     });
-                                    recyclerView.setAdapter(adapter);
+                                    //recyclerView.setAdapter(adapter);
+                                    AlphaInAnimationAdapter alphaInAnimationAdapter = new AlphaInAnimationAdapter(adapter);
+                                    alphaInAnimationAdapter.setDuration(1000);
+                                    alphaInAnimationAdapter.setInterpolator(new OvershootInterpolator());
+                                    recyclerView.setAdapter(alphaInAnimationAdapter);
 
                                 }
                             })

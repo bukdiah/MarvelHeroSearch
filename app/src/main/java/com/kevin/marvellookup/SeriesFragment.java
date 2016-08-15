@@ -22,6 +22,8 @@ import java.util.ArrayList;
 public class SeriesFragment extends Fragment {
     ArrayList<SeriesInfo> series;
 
+    public static final String SERIES = "series";
+
     private Context context;
 
     public SeriesFragment() {

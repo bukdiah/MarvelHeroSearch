@@ -1,6 +1,5 @@
 package com.kevin.marvellookup;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
@@ -23,14 +22,10 @@ public class TabLayoutActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private TabLayout tabLayout;
     private ViewPager viewPager;
-
-    private Context context;
-    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_activity);
-        context = this;
         //Retrieve Bundle sent from man activity
         Bundle b = getIntent().getExtras();
 
