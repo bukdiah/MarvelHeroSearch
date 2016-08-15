@@ -20,6 +20,8 @@ import android.widget.Toast;
 
 import com.kevin.marvellookup.adapters.HeroAdapter;
 import com.kevin.marvellookup.pojo.CharactersData;
+import com.kevin.marvellookup.pojo.ComicsPOJO.ComicsData;
+import com.kevin.marvellookup.pojo.ComicsPOJO.TextObject;
 import com.kevin.marvellookup.pojo.Result;
 import com.kevin.marvellookup.pojo.Url;
 
@@ -45,6 +47,8 @@ import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
+import rx.functions.Func1;
+import rx.functions.Func2;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
 
@@ -74,8 +78,9 @@ public class MainActivity extends AppCompatActivity {
     Intent i;
     Bundle bundle;
 
-    private CharacterService characterService, characterDetail;
+    private CharacterService characterService, characterDetail, characterComics;
     private Observable<CharactersData> searchResults, detailSearch;
+    private Observable<ComicsData> comicSearch;
     private CompositeSubscription mCompositeSubscription;
 
     private ProgressDialog mProgressDialog;
@@ -207,12 +212,13 @@ public class MainActivity extends AppCompatActivity {
                                     {
                                         String name = temp.getName();
                                         String imageURL = temp.getThumbnail().getPath()+"/standard_large.jpg";
-                                        int iconId = temp.getId();
+                                        //int iconId = temp.getId();
+                                        int charId = temp.getId();
 
                                         HeroInfo current = new HeroInfo();
                                         current.name = name;
                                         current.imageURL = imageURL;
-                                        current.iconId = iconId;
+                                        current.charId = charId;
                                         heroes.add(current);
                                     }
                                     adapter = new HeroAdapter(context,heroes);
@@ -222,6 +228,8 @@ public class MainActivity extends AppCompatActivity {
                                         public void onItemClick(View itemView, int position) {
                                             TextView tvName = (TextView) itemView.findViewById(R.id.tvHero);
                                             String name = tvName.getText().toString();
+
+                                            int charId = tvName.getMaxEms();
                                             Log.d("Mainactivity", "onItemClick: YES");
                                             Toast.makeText(MainActivity.this, name, Toast.LENGTH_SHORT).show();
 
@@ -240,7 +248,10 @@ public class MainActivity extends AppCompatActivity {
                                             mProgressDialog.setIndeterminate(true);
                                             mProgressDialog.show();
                                             //Pass String name into a method that calls RxAndroid for another query
-                                            adapterClick(name);
+                                            adapterClick(name,charId);
+
+                                            //i.putExtras(bundle);
+                                            //startActivity(i);
 
                                         }
                                     });
@@ -257,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void adapterClick(String name)
+    private void adapterClick(String name, int charId)
     {
         Log.d("adapterclick","adapterClick called");
 
@@ -348,8 +359,8 @@ public class MainActivity extends AppCompatActivity {
                                                                 bundle.putString("powers",map.get("powers"));
                                                                 bundle.putString("abilities",map.get("abilities"));
 
-                                                                i.putExtras(bundle);
-                                                                startActivity(i);
+                                                                //i.putExtras(bundle);
+                                                                //startActivity(i);
                                                             }
                                                         });
                                             }
@@ -359,6 +370,49 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             })
             );
+
+
+            //Observable to retrieve comics of specified charId
+            characterComics = retrofit.create(CharacterService.class);
+
+            comicSearch = characterComics.getComics(charId,TS,publicAPI,hash);
+
+            comicSearch.subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Subscriber<ComicsData>() {
+                        List<ComicsInfo> comics = new ArrayList<>();
+                        @Override
+                        public void onCompleted() {
+
+
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+
+
+                        }
+
+                        @Override
+                        public void onNext(ComicsData comicsData) {
+                            List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
+                            //List<ComicsInfo> comics = new ArrayList<>();
+
+                            for(com.kevin.marvellookup.pojo.ComicsPOJO.Result temp: data)
+                            {
+                                String title = temp.getTitle();
+
+                                String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
+
+                                ComicsInfo comic = new ComicsInfo(title,thumbnailURL);
+                                comics.add(comic);
+                            }
+                            bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>)comics);
+
+                            //i.putExtras(bundle);
+                            //startActivity(i);
+                        }
+                    });
 
 
         }

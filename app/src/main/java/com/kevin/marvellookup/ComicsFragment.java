@@ -19,20 +19,20 @@ import java.util.ArrayList;
 /**
  * Created by Kevin on 8/13/2016.
  */
-public class SeriesFragment extends Fragment {
-    ArrayList<SeriesInfo> series;
+public class ComicsFragment extends Fragment {
+    ArrayList<ComicsInfo> series;
 
-    public static final String SERIES = "series";
+    public static final String COMICS = "comics";
 
     private Context context;
 
-    public SeriesFragment() {
+    public ComicsFragment() {
     }
 
-    public static SeriesFragment newInstance()
+    public static ComicsFragment newInstance()
     {
-        SeriesFragment seriesFragment = new SeriesFragment();
-        return seriesFragment;
+        ComicsFragment comicsFragment = new ComicsFragment();
+        return comicsFragment;
     }
 
     @Override
@@ -59,7 +59,7 @@ public class SeriesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.series_fragment, container, false);
 
-        series = SeriesInfo.createContactsList(16);
+        series = ComicsInfo.createContactsList(16);
 
         SeriesAdapter adapter = new SeriesAdapter(context,series);
 

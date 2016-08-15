@@ -48,7 +48,7 @@ public class PowersAbilitiesFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.scrollview,container,false);;
+        View view = inflater.inflate(R.layout.powers_abilities_fragment,container,false);;
 
         TextView tvPowers = (TextView) view.findViewById(R.id.tvPowers);
         TextView tvAbilities = (TextView) view.findViewById(R.id.tvAbilities);

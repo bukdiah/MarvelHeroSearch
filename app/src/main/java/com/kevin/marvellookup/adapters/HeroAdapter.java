@@ -44,6 +44,7 @@ public class HeroAdapter extends RecyclerView.Adapter<HeroAdapter.MyViewHolder> 
         HeroInfo current = data.get(position);
 
         holder.name.setText(current.getName());
+        holder.name.setMaxEms(current.getCharId());
         //holder.icon.setImageResource(current.getIconId());
 
         //Load image from URL into ImageView

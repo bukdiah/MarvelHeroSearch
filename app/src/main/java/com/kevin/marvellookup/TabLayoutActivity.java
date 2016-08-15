@@ -12,6 +12,8 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 
+import com.kevin.marvellookup.pojo.Comics;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +22,7 @@ public class TabLayoutActivity extends AppCompatActivity {
     private String bio;
     private String powers;
     private String abilities;
+    private List<ComicsInfo> comics;
 
     private Toolbar toolbar;
     private TabLayout tabLayout;
@@ -36,10 +39,19 @@ public class TabLayoutActivity extends AppCompatActivity {
             Log.d("TabLayout Bundle", "bio: "+b.getString("bio"));
             Log.d("TabLayout Bundle", "powers: "+b.getString("powers"));
             Log.d("TabLayout Bundle", "abilities: "+b.getString("abilities"));
+            //Log.d("TabLayout Bundle", "comics: "+b.getString("comics").toString());
 
             bio = b.getString(BioFragment.BIO);
             powers = b.getString(PowersAbilitiesFragment.POWERS);
             abilities = b.getString(PowersAbilitiesFragment.ABILITIES);
+            comics = b.getParcelableArrayList(ComicsFragment.COMICS);
+
+
+            for (ComicsInfo c: comics)
+            {
+                System.out.println("Title: "+c.getName());
+                System.out.println("URL: "+c.getImageURL());
+            }
 
             //System.out.println("BIO: "+bio);
         }
@@ -78,7 +90,7 @@ public class TabLayoutActivity extends AppCompatActivity {
         adapter.addFragment(BioFragment.newInstance(bio),"Biography");
         //adapter.addFragment(new PowersAbilitiesFragment(), "Attributes/Powers");
         adapter.addFragment(PowersAbilitiesFragment.newtInstance(powers,abilities), "Powers/Abilities");
-        adapter.addFragment(new SeriesFragment(), "Series");
+        adapter.addFragment(new ComicsFragment(), "Series");
         viewPager.setAdapter(adapter);
     }
 

@@ -4,9 +4,18 @@ package com.kevin.marvellookup;
  * Created by Kevin on 8/9/2016.
  */
 public class HeroInfo {
-    int iconId;
+    public int getCharId() {
+        return charId;
+    }
+
+    public void setCharId(int charId) {
+        this.charId = charId;
+    }
+
+    int charId;
     String name;
     String imageURL;
+
 
     public String getImageURL() {
         return imageURL;
@@ -16,13 +25,7 @@ public class HeroInfo {
         this.imageURL = imageURL;
     }
 
-    public int getIconId() {
-        return iconId;
-    }
 
-    public void setIconId(int iconId) {
-        this.iconId = iconId;
-    }
 
     public String getName() {
         return name;
