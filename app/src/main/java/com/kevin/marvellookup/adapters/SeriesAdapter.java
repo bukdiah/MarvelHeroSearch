@@ -47,7 +47,8 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.MyViewHold
         //Load image from URL into ImageView
         Picasso
                 .with(context)
-                .load(current.getIconId())
+                //.load(current.getIconId())
+                .load(current.getImageURL())
                 .into(holder.cover);
     }
 

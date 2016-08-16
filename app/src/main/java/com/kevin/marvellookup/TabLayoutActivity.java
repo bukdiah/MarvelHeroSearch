@@ -12,8 +12,6 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 
-import com.kevin.marvellookup.pojo.Comics;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,7 +88,7 @@ public class TabLayoutActivity extends AppCompatActivity {
         adapter.addFragment(BioFragment.newInstance(bio),"Biography");
         //adapter.addFragment(new PowersAbilitiesFragment(), "Attributes/Powers");
         adapter.addFragment(PowersAbilitiesFragment.newtInstance(powers,abilities), "Powers/Abilities");
-        adapter.addFragment(new ComicsFragment(), "Series");
+        adapter.addFragment(ComicsFragment.newInstance(comics), "Comics");
         viewPager.setAdapter(adapter);
     }
 

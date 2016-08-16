@@ -15,12 +15,13 @@ import android.view.ViewGroup;
 import com.kevin.marvellookup.adapters.SeriesAdapter;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Kevin on 8/13/2016.
  */
 public class ComicsFragment extends Fragment {
-    ArrayList<ComicsInfo> series;
+    private ArrayList<ComicsInfo> comics;
 
     public static final String COMICS = "comics";
 
@@ -29,9 +30,13 @@ public class ComicsFragment extends Fragment {
     public ComicsFragment() {
     }
 
-    public static ComicsFragment newInstance()
+    public static ComicsFragment newInstance(List<ComicsInfo> comics)
     {
         ComicsFragment comicsFragment = new ComicsFragment();
+
+        Bundle b = new Bundle();
+        b.putParcelableArrayList(COMICS,(ArrayList<ComicsInfo>)comics);
+        comicsFragment.setArguments(b);
         return comicsFragment;
     }
 
@@ -52,31 +57,33 @@ public class ComicsFragment extends Fragment {
         }
         else
             Log.d("SERIES FRAG", "onCreate: context == null!");
+
+        comics = getArguments().getParcelableArrayList(COMICS);
     }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.series_fragment, container, false);
+        SeriesAdapter adapter;
+        //series = ComicsInfo.createContactsList(16);
+        if(!comics.isEmpty()) {
+            adapter = new SeriesAdapter(context, comics);
 
-        series = ComicsInfo.createContactsList(16);
+            RecyclerView recyclerView = (RecyclerView) view.findViewById(R.id.rvSeries);
 
-        SeriesAdapter adapter = new SeriesAdapter(context,series);
+            GridLayoutManager glm = new GridLayoutManager(getContext(),3);
+            recyclerView.setLayoutManager(glm);
 
-        RecyclerView recyclerView = (RecyclerView) view.findViewById(R.id.rvSeries);
+            //RecyclerView.ItemDecoration itemDecoration = new DividerItemDecoration(context,DividerItemDecoration.HORIZONTAL_LIST);
+            //recyclerView.addItemDecoration(itemDecoration);
+            recyclerView.addItemDecoration(new ItemDecorationAlbumColumns(
+                    5,3
+            ));
 
-        GridLayoutManager glm = new GridLayoutManager(getContext(),4);
-        recyclerView.setLayoutManager(glm);
-
-        //RecyclerView.ItemDecoration itemDecoration = new DividerItemDecoration(context,DividerItemDecoration.HORIZONTAL_LIST);
-        //recyclerView.addItemDecoration(itemDecoration);
-        recyclerView.addItemDecoration(new ItemDecorationAlbumColumns(
-                5,4
-        ));
-
-        if(isAdded())
-            recyclerView.setAdapter(adapter);
-
+            if(isAdded())
+                recyclerView.setAdapter(adapter);
+        }
 
 
         return view;

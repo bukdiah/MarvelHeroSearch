@@ -21,7 +21,6 @@ import android.widget.Toast;
 import com.kevin.marvellookup.adapters.HeroAdapter;
 import com.kevin.marvellookup.pojo.CharactersData;
 import com.kevin.marvellookup.pojo.ComicsPOJO.ComicsData;
-import com.kevin.marvellookup.pojo.ComicsPOJO.TextObject;
 import com.kevin.marvellookup.pojo.Result;
 import com.kevin.marvellookup.pojo.Url;
 
@@ -31,6 +30,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -46,9 +46,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.functions.Func1;
-import rx.functions.Func2;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
 
@@ -85,6 +82,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressDialog mProgressDialog;
 
+    private HashMap<String,String> detailMap;
+
+    private int charId;
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -116,6 +117,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
+
+        detailMap = new HashMap<>();
 
         mCompositeSubscription = new CompositeSubscription();
 
@@ -229,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
                                             TextView tvName = (TextView) itemView.findViewById(R.id.tvHero);
                                             String name = tvName.getText().toString();
 
-                                            int charId = tvName.getMaxEms();
+                                            int Id = tvName.getMaxEms();
                                             Log.d("Mainactivity", "onItemClick: YES");
                                             Toast.makeText(MainActivity.this, name, Toast.LENGTH_SHORT).show();
 
@@ -248,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                                             mProgressDialog.setIndeterminate(true);
                                             mProgressDialog.show();
                                             //Pass String name into a method that calls RxAndroid for another query
-                                            adapterClick(name,charId);
+                                            adapterClick(name,Id);
 
                                             //i.putExtras(bundle);
                                             //startActivity(i);
@@ -268,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void adapterClick(String name, int charId)
+    private void adapterClick(String name, int id)
     {
         Log.d("adapterclick","adapterClick called");
 
@@ -288,6 +291,8 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d("HASH", hash);
 
+            charId = id;
+
             detailSearch = characterDetail.getCharactersData(name,TS,publicAPI,hash);
 
             mCompositeSubscription.add(
@@ -296,7 +301,7 @@ public class MainActivity extends AppCompatActivity {
                             .subscribe(new Subscriber<CharactersData>() {
                                 @Override
                                 public void onCompleted() {
-                                    mProgressDialog.dismiss();
+                                    //mProgressDialog.dismiss();
                                     Log.d("AdapterClick", "onCompleted: DONE");
                                 }
 
@@ -346,6 +351,108 @@ public class MainActivity extends AppCompatActivity {
                                                     }
                                                 });
 
+                                                fetchFromWiki.subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread())
+                                                        .subscribe(new Subscriber<HashMap<String, String>>() {
+                                                            @Override
+                                                            public void onCompleted() {
+                                                                Log.d("FetchFromWiki", "onCompleted: starting comic search");
+                                                                characterComics = retrofit.create(CharacterService.class);
+                                                                Log.d("FetchFromWiki", "onCompleted: charId = "+charId);
+
+                                                                comicSearch = characterComics.getComics(charId,TS,publicAPI,hash);
+
+                                                                comicSearch.subscribeOn(Schedulers.newThread())
+                                                                        .observeOn(AndroidSchedulers.mainThread())
+                                                                        .subscribe(new Subscriber<ComicsData>() {
+                                                                            List<ComicsInfo> comics = new ArrayList<>();
+                                                                            @Override
+                                                                            public void onCompleted() {
+                                                                                mProgressDialog.dismiss();
+
+                                                                                for(ComicsInfo c: comics)
+                                                                                {
+                                                                                    Log.d("comicsSearch Array ",c.getName() +" "+c.getImageURL() );
+                                                                                }
+                                                                                i.putExtras(bundle);
+                                                                                startActivity(i);
+
+                                                                            }
+
+                                                                            @Override
+                                                                            public void onError(Throwable e) {
+                                                                                if(e instanceof HttpException)
+                                                                                {
+                                                                                    HttpException response = (HttpException) e;
+                                                                                    int code = response.code();
+
+                                                                                    Log.e("Response code",Integer.toString(code));
+                                                                                }
+
+                                                                                if (e instanceof SocketTimeoutException)
+                                                                                {
+                                                                                    Log.e("COMICS", "onError: ",e );
+                                                                                    comicSearch.retry();
+                                                                                }
+                                                                                comicSearch.retry();
+
+
+                                                                            }
+
+                                                                            @Override
+                                                                            public void onNext(ComicsData comicsData) {
+                                                                                /*
+                                                                                mProgressDialog = new ProgressDialog(context);
+                                                                                mProgressDialog.setTitle("Please wait");
+                                                                                mProgressDialog.setMessage("Getting character details...");
+                                                                                mProgressDialog.setCancelable(false);
+                                                                                mProgressDialog.setIndeterminate(true);
+                                                                                mProgressDialog.show();*/
+
+                                                                                Log.d("comicSearch", "onNext: inside");
+                                                                                List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
+                                                                                //List<ComicsInfo> comics = new ArrayList<>();
+
+                                                                                for(com.kevin.marvellookup.pojo.ComicsPOJO.Result temp: data)
+                                                                                {
+                                                                                    String title = temp.getTitle();
+
+                                                                                    String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
+
+                                                                                    ComicsInfo comic = new ComicsInfo(title,thumbnailURL);
+                                                                                    comics.add(comic);
+                                                                                }
+                                                                                bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>)comics);
+
+                                                                                for(ComicsInfo c: comics)
+                                                                                {
+                                                                                    Log.d("comicsSearch Array","onNext() "+c.getName() +" "+c.getImageURL() );
+                                                                                }
+                                                                                /*
+                                                                                for (String key : bundle.keySet()) {
+                                                                                    Object value = bundle.get(key);
+                                                                                    Log.d("BUNDLE", String.format("%s %s (%s)", key,
+                                                                                            value.toString(), value.getClass().getName()));
+                                                                                }*/
+                                                                            }
+                                                                        });
+
+                                                            }
+
+                                                            @Override
+                                                            public void onError(Throwable e) {
+                                                                Log.e("FetchFromWiki", "onError: ",e );
+                                                            }
+
+                                                            @Override
+                                                            public void onNext(HashMap<String, String> map) {
+                                                                Log.d("fetchFromWiki", "call: POOP ");
+
+                                                                bundle.putString("bio",map.get("bio"));
+                                                                bundle.putString("powers",map.get("powers"));
+                                                                bundle.putString("abilities",map.get("abilities"));
+                                                            }
+                                                        });
+                                                /*
                                                 fetchFromWiki
                                                         .subscribeOn(Schedulers.newThread())
                                                         .observeOn(AndroidSchedulers.mainThread())
@@ -362,7 +469,7 @@ public class MainActivity extends AppCompatActivity {
                                                                 //i.putExtras(bundle);
                                                                 //startActivity(i);
                                                             }
-                                                        });
+                                                        });*/
                                             }
                                         }
 
@@ -373,10 +480,118 @@ public class MainActivity extends AppCompatActivity {
 
 
             //Observable to retrieve comics of specified charId
-            characterComics = retrofit.create(CharacterService.class);
+            //characterComics = retrofit.create(CharacterService.class);
 
-            comicSearch = characterComics.getComics(charId,TS,publicAPI,hash);
+            //comicSearch = characterComics.getComics(charId,TS,publicAPI,hash);
 
+            /*
+            detailSearch.doOnNext(new Action1<CharactersData>() {
+                @Override
+                public void call(CharactersData charactersData) {
+                    Log.d("adapterclick", " detailSearch onNext: CALLED");
+                    //Intent i = new Intent(context,TabLayoutActivity.class);
+
+                    List<Result> data = charactersData.getData().getResults();
+                    List<Url> URLs;
+
+                    for(Result temp : data)
+                    {
+                        URLs = temp.getUrls();
+
+                        for(Url u: URLs)
+                        {
+                            if(u.getType().equals("wiki"))
+                            {
+                                final String wiki = u.getUrl();
+
+                                Observable<HashMap<String,String>> fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
+                                    @Override
+                                    public void call(Subscriber<? super HashMap<String, String>> subscriber) {
+                                        try{
+                                            HashMap<String,String> dataMap = searchDetail(wiki);
+                                            subscriber.onNext(dataMap); //Emit the hashmap
+                                            subscriber.onCompleted();
+                                        }catch(Exception e)
+                                        {
+                                            subscriber.onError(e);
+                                        }
+                                    }
+                                });
+
+                                fetchFromWiki
+                                        .subscribeOn(Schedulers.newThread())
+                                        .observeOn(AndroidSchedulers.mainThread())
+
+                                        .subscribe(new Action1<HashMap<String, String>>() {
+                                            @Override
+                                            public void call(HashMap<String, String> map) {
+                                                Log.d("fetchFromWiki", "call: MAP");
+                                                Log.d("fetchFromWiki","BIO: "+map.get("bio"));
+                                                Log.d("fetchFromWiki","POWERS: "+map.get("powers"));
+                                                Log.d("fetchFromWiki","ABILITIES: "+map.get("abilities"));
+                                                //detailMap.put("bio",map.get("bio"));
+                                                //detailMap.put("powers",map.get("powers"));
+                                               // detailMap.put("abilities",map.get("abilities"));
+
+                                                bundle.putString("bio",map.get("bio"));
+                                                bundle.putString("powers",map.get("powers"));
+                                                bundle.putString("abilities",map.get("abilities"));
+                                            }
+                                        });
+
+                            }
+                        }
+                    }
+
+
+                }
+            });
+
+            comicSearch.doOnNext(new Action1<ComicsData>() {
+                @Override
+                public void call(ComicsData comicsData) {
+                    List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
+                    List<ComicsInfo> comics = new ArrayList<>();
+
+                    for(com.kevin.marvellookup.pojo.ComicsPOJO.Result temp: data)
+                    {
+                        String title = temp.getTitle();
+
+                        String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
+
+                        ComicsInfo comic = new ComicsInfo(title,thumbnailURL);
+                        comics.add(comic);
+                    }
+                    bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>)comics);
+
+                    System.out.println("Comics ARRAY LIST");
+
+                    for(ComicsInfo c: comics)
+                    {
+                        System.out.println("TITLE: "+c.getName());
+                        System.out.println("URL: "+c.getImageURL());
+                    }
+                }
+            });
+            detailSearch.subscribeOn(Schedulers.newThread());
+            comicSearch.subscribeOn(Schedulers.newThread());
+            
+            Observable.zip(detailSearch, comicSearch, new Func2<CharactersData, ComicsData, Object>() {
+                @Override
+                public Object call(CharactersData charactersData, ComicsData comicsData) {
+                    return null;
+                }
+            }).subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Object>() {
+                @Override
+                public void call(Object o) {
+                    for (String key : bundle.keySet()) {
+                        Object value = bundle.get(key);
+                        Log.d("BUNDLE", String.format("%s %s (%s)", key,
+                                value.toString(), value.getClass().getName()));
+                    }
+                }
+            });*/
+/*
             comicSearch.subscribeOn(Schedulers.newThread())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Subscriber<ComicsData>() {
@@ -412,7 +627,9 @@ public class MainActivity extends AppCompatActivity {
                             //i.putExtras(bundle);
                             //startActivity(i);
                         }
-                    });
+                    });*/
+
+
 
 
         }
