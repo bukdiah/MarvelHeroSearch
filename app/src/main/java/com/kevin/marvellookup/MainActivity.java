@@ -92,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
     private int charId;
 
     private boolean connection = false;
+    private TextView emptyView;
 
     @Override
     protected void onDestroy() {
@@ -168,6 +169,11 @@ public class MainActivity extends AppCompatActivity {
 
 
         recyclerView = (RecyclerView) findViewById(R.id.rv);
+        recyclerView.setVisibility(View.GONE);
+
+        emptyView = (TextView) findViewById(R.id.empty_view);
+        emptyView.setVisibility(View.VISIBLE);
+
         LinearLayoutManager llm = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(llm);
 
@@ -299,6 +305,18 @@ public class MainActivity extends AppCompatActivity {
                                             current.imageURL = imageURL;
                                             current.charId = charId;
                                             heroes.add(current);
+                                        }
+
+                                        if(heroes.isEmpty())
+                                        {
+                                            recyclerView.setVisibility(View.GONE);
+                                            emptyView.setVisibility(View.VISIBLE);
+                                            emptyView.setText("No results found :(");
+                                        }
+                                        else
+                                        {
+                                            recyclerView.setVisibility(View.VISIBLE);
+                                            emptyView.setVisibility(View.GONE);
                                         }
                                         adapter = new HeroAdapter(context, heroes);
 
