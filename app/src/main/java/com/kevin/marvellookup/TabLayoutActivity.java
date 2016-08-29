@@ -44,13 +44,14 @@ public class TabLayoutActivity extends AppCompatActivity {
             abilities = b.getString(PowersAbilitiesFragment.ABILITIES);
             comics = b.getParcelableArrayList(ComicsFragment.COMICS);
 
+            /*
 
             for (ComicsInfo c: comics)
             {
                 System.out.println("Title: "+c.getName());
                 System.out.println("URL: "+c.getImageURL());
             }
-
+*/
             //System.out.println("BIO: "+bio);
         }
         else

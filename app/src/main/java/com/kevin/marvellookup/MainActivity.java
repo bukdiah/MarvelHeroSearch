@@ -373,345 +373,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-    Called when User clicks an Item in the RecyclerView.
-    Performs a detailed search of the User clicked character
-     */
-    private void adapterClick(String name, int id) {
-        Log.d("adapterclick", "adapterClick called");
-
-        characterDetail = retrofit.create(CharacterService.class);
-
-        if (name != null) {
-            Log.d("adapterClick", "INSIDE IF STATEMENT");
-            Log.d("adapterclick", "name value = " + name);
-
-            Random r = new Random();
-            TS = r.nextInt(max - min + 1) + min;
-
-            Log.d("TimeStamp", Integer.toString(TS));
-
-            md5Hash(TS, privateAPI, publicAPI);
-
-            Log.d("HASH", hash);
-
-            charId = id;
-
-            detailSearch = characterDetail.getCharactersData(name, TS, publicAPI, hash);
-
-            mCompositeSubscription.add(
-                    detailSearch.subscribeOn(Schedulers.newThread())
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe(new Subscriber<CharactersData>() {
-                                @Override
-                                public void onCompleted() {
-                                    mProgressDialog.dismiss();
-                                    Log.d("AdapterClick", "onCompleted: DONE");
-                                }
-
-                                @Override
-                                public void onError(Throwable e) {
-                                    if (e instanceof HttpException) {
-                                        HttpException response = (HttpException) e;
-                                        int code = response.code();
-
-                                        Log.e("Response code", Integer.toString(code));
-                                    }
-                                }
-
-                                @Override
-                                public void onNext(CharactersData charactersData) {
-
-                                    Log.d("adapterclick", " detailSearch onNext: CALLED");
-                                    //Intent i = new Intent(context,TabLayoutActivity.class);
-
-                                    List<Result> data = charactersData.getData().getResults();
-                                    List<Url> URLs;
-
-                                    for (Result temp : data) {
-                                        String desc = temp.getDescription();
-                                        URLs = temp.getUrls();
-
-                                        Log.d("adapterclick", "ELSE clause of deatileSearch");
-                                        for (Url u : URLs) {
-                                            if (u.getType().equals("wiki")) {
-                                                final String wiki = u.getUrl();
-                                                Log.d("adapterclick", "else clause onNext: URL " + wiki);
-                                                Observable<HashMap<String, String>> fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
-                                                    @Override
-                                                    public void call(Subscriber<? super HashMap<String, String>> subscriber) {
-                                                        try {
-                                                            HashMap<String, String> dataMap = searchDetail(wiki);
-                                                            subscriber.onNext(dataMap); //Emit the hashmap
-                                                            subscriber.onCompleted();
-                                                        } catch (Exception e) {
-                                                            subscriber.onError(e);
-                                                        }
-                                                    }
-                                                });
-
-                                                fetchFromWiki.subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread())
-                                                        .subscribe(new Subscriber<HashMap<String, String>>() {
-                                                            @Override
-                                                            public void onCompleted() {
-                                                                Log.d("FetchFromWiki", "onCompleted: starting comic search");
-                                                                characterComics = retrofit.create(CharacterService.class);
-                                                                Log.d("FetchFromWiki", "onCompleted: charId = " + charId);
-
-                                                                comicSearch = characterComics.getComics(charId, TS, publicAPI, hash);
-
-                                                                comicSearch.subscribeOn(Schedulers.newThread())
-                                                                        .observeOn(AndroidSchedulers.mainThread())
-                                                                        .subscribe(new Subscriber<ComicsData>() {
-                                                                            List<ComicsInfo> comics = new ArrayList<>();
-
-                                                                            @Override
-                                                                            public void onCompleted() {
-                                                                                mProgressDialog.dismiss();
-
-                                                                                for (ComicsInfo c : comics) {
-                                                                                    Log.d("comicsSearch Array ", c.getName() + " " + c.getImageURL());
-                                                                                }
-                                                                                i.putExtras(bundle);
-                                                                                startActivity(i);
-
-                                                                            }
-
-                                                                            @Override
-                                                                            public void onError(Throwable e) {
-                                                                                if (e instanceof HttpException) {
-                                                                                    HttpException response = (HttpException) e;
-                                                                                    int code = response.code();
-
-                                                                                    Log.e("Response code", Integer.toString(code));
-                                                                                }
-
-                                                                                if (e instanceof SocketTimeoutException) {
-                                                                                    Log.e("COMICS", "onError: ", e);
-                                                                                    comicSearch.retry();
-                                                                                }
-                                                                                comicSearch.retry();
-
-
-                                                                            }
-
-                                                                            @Override
-                                                                            public void onNext(ComicsData comicsData) {
-                                                                                Log.d("comicSearch", "onNext: inside");
-                                                                                List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
-
-                                                                                for (com.kevin.marvellookup.pojo.ComicsPOJO.Result temp : data) {
-                                                                                    String title = temp.getTitle();
-
-                                                                                    String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
-
-                                                                                    ComicsInfo comic = new ComicsInfo(title, thumbnailURL);
-                                                                                    comics.add(comic);
-                                                                                }
-                                                                                bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>) comics);
-
-                                                                                for (ComicsInfo c : comics) {
-                                                                                    Log.d("comicsSearch Array", "onNext() " + c.getName() + " " + c.getImageURL());
-                                                                                }
-                                                                            }
-                                                                        });
-
-                                                            }
-
-                                                            @Override
-                                                            public void onError(Throwable e) {
-                                                                Log.e("FetchFromWiki", "onError: ", e);
-                                                            }
-
-                                                            @Override
-                                                            public void onNext(HashMap<String, String> map) {
-                                                                Log.d("fetchFromWiki", "call: POOP ");
-
-                                                                bundle.putString("bio", map.get("bio"));
-                                                                bundle.putString("powers", map.get("powers"));
-                                                                bundle.putString("abilities", map.get("abilities"));
-                                                            }
-                                                        });
-                                                /*
-                                                fetchFromWiki
-                                                        .subscribeOn(Schedulers.newThread())
-                                                        .observeOn(AndroidSchedulers.mainThread())
-
-                                                        .subscribe(new Action1<HashMap<String, String>>() {
-                                                            @Override
-                                                            public void call(HashMap<String, String> map) {
-                                                                Log.d("fetchFromWiki", "call: POOP ");
-
-                                                                bundle.putString("bio",map.get("bio"));
-                                                                bundle.putString("powers",map.get("powers"));
-                                                                bundle.putString("abilities",map.get("abilities"));
-
-                                                                //i.putExtras(bundle);
-                                                                //startActivity(i);
-                                                            }
-                                                        });*/
-                                            }
-                                        }
-
-                                    }
-                                }
-                            })
-            );
-
-
-            //Observable to retrieve comics of specified charId
-            //characterComics = retrofit.create(CharacterService.class);
-
-            //comicSearch = characterComics.getComics(charId,TS,publicAPI,hash);
-
-            /*
-            detailSearch.doOnNext(new Action1<CharactersData>() {
-                @Override
-                public void call(CharactersData charactersData) {
-                    Log.d("adapterclick", " detailSearch onNext: CALLED");
-                    //Intent i = new Intent(context,TabLayoutActivity.class);
-
-                    List<Result> data = charactersData.getData().getResults();
-                    List<Url> URLs;
-
-                    for(Result temp : data)
-                    {
-                        URLs = temp.getUrls();
-
-                        for(Url u: URLs)
-                        {
-                            if(u.getType().equals("wiki"))
-                            {
-                                final String wiki = u.getUrl();
-
-                                Observable<HashMap<String,String>> fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
-                                    @Override
-                                    public void call(Subscriber<? super HashMap<String, String>> subscriber) {
-                                        try{
-                                            HashMap<String,String> dataMap = searchDetail(wiki);
-                                            subscriber.onNext(dataMap); //Emit the hashmap
-                                            subscriber.onCompleted();
-                                        }catch(Exception e)
-                                        {
-                                            subscriber.onError(e);
-                                        }
-                                    }
-                                });
-
-                                fetchFromWiki
-                                        .subscribeOn(Schedulers.newThread())
-                                        .observeOn(AndroidSchedulers.mainThread())
-
-                                        .subscribe(new Action1<HashMap<String, String>>() {
-                                            @Override
-                                            public void call(HashMap<String, String> map) {
-                                                Log.d("fetchFromWiki", "call: MAP");
-                                                Log.d("fetchFromWiki","BIO: "+map.get("bio"));
-                                                Log.d("fetchFromWiki","POWERS: "+map.get("powers"));
-                                                Log.d("fetchFromWiki","ABILITIES: "+map.get("abilities"));
-                                                //detailMap.put("bio",map.get("bio"));
-                                                //detailMap.put("powers",map.get("powers"));
-                                               // detailMap.put("abilities",map.get("abilities"));
-
-                                                bundle.putString("bio",map.get("bio"));
-                                                bundle.putString("powers",map.get("powers"));
-                                                bundle.putString("abilities",map.get("abilities"));
-                                            }
-                                        });
-
-                            }
-                        }
-                    }
-
-
-                }
-            });
-
-            comicSearch.doOnNext(new Action1<ComicsData>() {
-                @Override
-                public void call(ComicsData comicsData) {
-                    List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
-                    List<ComicsInfo> comics = new ArrayList<>();
-
-                    for(com.kevin.marvellookup.pojo.ComicsPOJO.Result temp: data)
-                    {
-                        String title = temp.getTitle();
-
-                        String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
-
-                        ComicsInfo comic = new ComicsInfo(title,thumbnailURL);
-                        comics.add(comic);
-                    }
-                    bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>)comics);
-
-                    System.out.println("Comics ARRAY LIST");
-
-                    for(ComicsInfo c: comics)
-                    {
-                        System.out.println("TITLE: "+c.getName());
-                        System.out.println("URL: "+c.getImageURL());
-                    }
-                }
-            });
-            detailSearch.subscribeOn(Schedulers.newThread());
-            comicSearch.subscribeOn(Schedulers.newThread());
-            
-            Observable.zip(detailSearch, comicSearch, new Func2<CharactersData, ComicsData, Object>() {
-                @Override
-                public Object call(CharactersData charactersData, ComicsData comicsData) {
-                    return null;
-                }
-            }).subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Object>() {
-                @Override
-                public void call(Object o) {
-                    for (String key : bundle.keySet()) {
-                        Object value = bundle.get(key);
-                        Log.d("BUNDLE", String.format("%s %s (%s)", key,
-                                value.toString(), value.getClass().getName()));
-                    }
-                }
-            });*/
-/*
-            comicSearch.subscribeOn(Schedulers.newThread())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Subscriber<ComicsData>() {
-                        List<ComicsInfo> comics = new ArrayList<>();
-                        @Override
-                        public void onCompleted() {
-
-
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-
-
-                        }
-
-                        @Override
-                        public void onNext(ComicsData comicsData) {
-                            List<com.kevin.marvellookup.pojo.ComicsPOJO.Result> data = comicsData.getData().getResults();
-                            //List<ComicsInfo> comics = new ArrayList<>();
-
-                            for(com.kevin.marvellookup.pojo.ComicsPOJO.Result temp: data)
-                            {
-                                String title = temp.getTitle();
-
-                                String thumbnailURL = temp.getThumbnail().getPath().concat("/portrait_incredible.jpg");
-
-                                ComicsInfo comic = new ComicsInfo(title,thumbnailURL);
-                                comics.add(comic);
-                            }
-                            bundle.putParcelableArrayList(ComicsFragment.COMICS, (ArrayList<ComicsInfo>)comics);
-
-                            //i.putExtras(bundle);
-                            //startActivity(i);
-                        }
-                    });*/
-
-
-        }
-    }
-
+Called when User clicks an Item in the RecyclerView.
+Performs a detailed search of the User clicked character
+ */
     private void searchHeroDetail(String name, int id)
     {
         createObservables(name,id);
@@ -732,32 +396,63 @@ public class MainActivity extends AppCompatActivity {
                         .flatMap(new Func1<CharactersData, Observable<HashMap<String,String>>>() {
                             @Override
                             public Observable<HashMap<String, String>> call(CharactersData charactersData) {
-                                List<Result> data = charactersData.getData().getResults();
+                                final List<Result> data = charactersData.getData().getResults();
                                 List<Url> URLs;
 
                                 for (Result temp: data)
                                 {
+                                    final String desc = temp.getDescription();
+
                                     URLs = temp.getUrls();
 
-                                    for (Url u: URLs)
+                                    if(URLs.get(1).getType().equals("wiki"))
                                     {
-                                        if(u.getType().equals("wiki"))
-                                        {
-                                            final String wiki = u.getUrl();
+                                        final String wiki = URLs.get(1).getUrl();
 
-                                            fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
-                                                @Override
-                                                public void call(Subscriber<? super HashMap<String, String>> subscriber) {
-                                                    try {
-                                                        HashMap<String, String> dataMap = searchDetail(wiki);
-                                                        subscriber.onNext(dataMap); //Emit the hashmap
-                                                        subscriber.onCompleted();
-                                                    } catch (Exception e) {
-                                                        subscriber.onError(e);
-                                                    }
+                                        fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
+                                            @Override
+                                            public void call(Subscriber<? super HashMap<String, String>> subscriber) {
+                                                try {
+                                                    HashMap<String, String> dataMap = searchDetail(wiki);
+                                                    subscriber.onNext(dataMap); //Emit the hashmap
+                                                    subscriber.onCompleted();
+                                                } catch (Exception e) {
+                                                    subscriber.onError(e);
                                                 }
-                                            });
-                                        }
+                                            }
+                                        });
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        fetchFromWiki = Observable.create(new Observable.OnSubscribe<HashMap<String, String>>() {
+                                            @Override
+                                            public void call(Subscriber<? super HashMap<String, String>> subscriber) {
+                                                Log.d("MAIN", "call: switchIfEmpty");
+                                                String bio = null;
+
+                                                if(desc!=null || !desc.equals(""))
+                                                {
+                                                    bio = desc;
+
+                                                }
+                                                else {
+                                                    bio = "None listed.";
+                                                }
+
+                                                String powers = "None listed.";
+                                                String abilities = "None listed.";
+
+                                                HashMap<String,String> dataMap = new HashMap<>();
+                                                dataMap.put("bio",bio);
+                                                dataMap.put("powers",powers);
+                                                dataMap.put("abilities",abilities);
+
+                                                subscriber.onNext(dataMap);
+                                                subscriber.onCompleted();
+                                            }
+                                        });
+                                        break;
                                     }
                                 }
                                 return fetchFromWiki;
