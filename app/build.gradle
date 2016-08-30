@@ -45,6 +45,9 @@ dependencies {
     //RecyclerView animator library
     compile 'jp.wasabeef:recyclerview-animators:2.2.3'
 
+    compile 'com.zsoltsafrany:needle:1.0.0'
+
+
 
 
 
